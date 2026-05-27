@@ -1,12 +1,16 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  // دقت کن: بین دو اسلش و حروف کوچک
-  base: "/my-react-app/", 
   plugins: [
     react(),
-    tailwindcss()
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'inline',
+      manifest: false // چون دستی در پوشه public ساختیمش
+    })
   ],
-})
+  base: '/workshop-ledger/', // این مسیر برای اجرای درست روی گیت‌هاب پیجز الزامی است
+});

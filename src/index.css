@@ -1,5 +1,50 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Dana FaNum";
+  src: url("/fonts/Dana/woff2/DanaFaNum-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Dana FaNum";
+  src: url("/fonts/Dana/woff2/DanaFaNum-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Dana FaNum";
+  src: url("/fonts/Dana/woff2/DanaFaNum-DemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Dana FaNum", Tahoma, sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+}
+
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -8,11 +53,4 @@
 .animate-marquee {
   display: inline-block;
   animation: marquee 25s linear infinite;
-}
-
-/* برای اینکه فونت‌ها در موبایل درست نمایش داده شوند */
-body {
-  margin: 0;
-  font-family: sans-serif;
-  direction: rtl; /* برای فارسی سازی جهت صفحه */
 }

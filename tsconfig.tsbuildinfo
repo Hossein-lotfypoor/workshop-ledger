@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/moment-jalaali.d.ts","./src/types.d.ts","./src/components/returnmodal.tsx","./src/db/database.ts","./src/pages/dashboard.tsx","./src/pages/invoicedetails.tsx","./src/pages/newinvoice.tsx","./src/pages/searchreports.tsx","./src/pages/workshopsmanager.tsx","./src/utils/dateutils.ts"],"version":"5.9.3"}
