@@ -51,12 +51,60 @@ export interface ReturnInvoiceItem {
   return_status: 'good' | 'damaged';
 }
 
+export interface LedgerReturn {
+  id?: number;
+  invoice_item_id: number;
+  return_date: string;
+  quantity_returned: number;
+  weight_returned: number;
+  return_type: 'healthy' | 'wasted';
+}
+
+/** ردیف ورود جنس در دفتر سررسید — مستقل از فاکتور کارگاه */
+export interface LedgerInput {
+  id?: number;
+  date: string;
+  invoice_number?: string;
+  product_name: string;
+  quantity: number;
+  weight?: number;
+  source?: string;
+  notes?: string;
+}
+
+/** ردیف خروج/تحویل جنس در دفتر سررسید — مستقل از فاکتور کارگاه */
+export interface LedgerOutput {
+  id?: number;
+  date: string;
+  invoice_number?: string;
+  product_name: string;
+  quantity: number;
+  weight?: number;
+  source?: string;
+  destination: string;
+  notes?: string;
+}
+
+/** مخاطب — آدرس و تلفن برای جستجوی صوتی */
+export interface Contact {
+  id?: number;
+  name: string;
+  aliases?: string;
+  address: string;
+  phone: string;
+  notes?: string;
+}
+
 class WorkshopDB extends Dexie {
   workshops!: Table<Workshop, number>;
   invoices!: Table<Invoice, number>;
   invoice_items!: Table<InvoiceItem, number>;
   return_invoices!: Table<ReturnInvoice, number>;
   return_invoice_items!: Table<ReturnInvoiceItem, number>;
+  returns!: Table<LedgerReturn, number>;
+  ledger_inputs!: Table<LedgerInput, number>;
+  ledger_outputs!: Table<LedgerOutput, number>;
+  contacts!: Table<Contact, number>;
 
   constructor() {
     super('WorkshopDB');
@@ -78,6 +126,35 @@ class WorkshopDB extends Dexie {
       for (const item of items) {
         await tx.table('return_invoice_items').update(item.id, { return_status: 'good' });
       }
+    });
+    this.version(3).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type'
+    });
+    this.version(4).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type',
+      ledger_inputs: '++id, date, invoice_number, product_name, source',
+      ledger_outputs: '++id, date, invoice_number, product_name, destination, source'
+    });
+    this.version(5).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type',
+      ledger_inputs: '++id, date, invoice_number, product_name, source',
+      ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
+      contacts: '++id, name, phone'
     });
   }
 }
