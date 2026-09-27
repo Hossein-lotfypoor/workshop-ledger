@@ -9,6 +9,7 @@ import WeightCalculator from './pages/WeightCalculator';
 import LedgerBook from './pages/LedgerBook'; // ◄ اضافه شدن صفحه جدید سررسید
 import LedgerReports from './pages/LedgerReports';
 import ContactsBook from './pages/ContactsBook';
+import DataTransfer from './pages/DataTransfer';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <NavLink to="/reports" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>گزارش‌ها</NavLink>
           <NavLink to="/weight-calc" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📦 محاسبه وزن</NavLink>
           <NavLink to="/contacts" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-violet-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📇 آدرس و تلفن</NavLink>
+          <NavLink to="/data" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-emerald-600 text-white font-bold' : 'hover:bg-slate-700'}`}>💾 داده‌ها و پشتیبان</NavLink>
         </nav>
         <main className="p-4">
           <Routes>
@@ -35,6 +37,7 @@ function App() {
             <Route path="/ledger" element={<LedgerBook />} />
             <Route path="/ledger-reports" element={<LedgerReports />} />
             <Route path="/contacts" element={<ContactsBook />} />
+            <Route path="/data" element={<DataTransfer />} />
           </Routes>
         </main>
       </div>
