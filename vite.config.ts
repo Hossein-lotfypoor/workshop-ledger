@@ -3,8 +3,17 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import tailwindcss from '@tailwindcss/vite'; // 🟢 ۱. این امپورت حیاتی برای نسخه ۴ اضافه شد
 
+const apiTarget = process.env.VITE_API_URL || 'http://localhost:3000';
+
 export default defineConfig({
   base: '/workshop-ledger/', 
+
+  server: {
+    host: true,
+    proxy: {
+      '/api': { target: apiTarget, changeOrigin: true },
+    },
+  },
 
   plugins: [
     tailwindcss(), // 🟢 ۲. پلاگین تیل‌ویند حتماً باید اولین گزینه در آرایه باشد
@@ -26,7 +35,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => true,
+            // درخواست‌های /api همیشه مستقیم به سرور کارگاه می‌روند تا داده کهنه نمایش داده نشود
+            urlPattern: ({ url }) => !url.pathname.startsWith('/api'),
             handler: 'NetworkFirst', 
             options: {
               cacheName: 'workshop-v3', // 🟢 ورژن کچ رو گذاشتیم v3 تا کچ‌های خراب قبلی کاملا باطل بشن

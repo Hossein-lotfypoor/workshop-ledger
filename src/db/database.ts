@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import { RemoteTable } from './apiClient';
 
 export interface Workshop {
   id?: number;
@@ -95,71 +95,19 @@ export interface Contact {
   notes?: string;
 }
 
-class WorkshopDB extends Dexie {
-  workshops!: Table<Workshop, number>;
-  invoices!: Table<Invoice, number>;
-  invoice_items!: Table<InvoiceItem, number>;
-  return_invoices!: Table<ReturnInvoice, number>;
-  return_invoice_items!: Table<ReturnInvoiceItem, number>;
-  returns!: Table<LedgerReturn, number>;
-  ledger_inputs!: Table<LedgerInput, number>;
-  ledger_outputs!: Table<LedgerOutput, number>;
-  contacts!: Table<Contact, number>;
+/** جدول‌های سرور محلی کارگاه — منبع مشترک داده بین لپ‌تاپ و موبایل */
+export const db = {
+  workshops: new RemoteTable<Workshop>('workshops'),
+  invoices: new RemoteTable<Invoice>('invoices'),
+  invoice_items: new RemoteTable<InvoiceItem>('invoice_items'),
+  return_invoices: new RemoteTable<ReturnInvoice>('return_invoices'),
+  return_invoice_items: new RemoteTable<ReturnInvoiceItem>('return_invoice_items'),
+  returns: new RemoteTable<LedgerReturn>('returns'),
+  ledger_inputs: new RemoteTable<LedgerInput>('ledger_inputs'),
+  ledger_outputs: new RemoteTable<LedgerOutput>('ledger_outputs'),
+  contacts: new RemoteTable<Contact>('contacts'),
+};
 
-  constructor() {
-    super('WorkshopDB');
-    this.version(1).stores({
-      workshops: '++id, name, unit_type',
-      invoices: '++id, invoice_number, workshop_id, date',
-      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
-      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
-      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id'
-    });
-    this.version(2).stores({
-      workshops: '++id, name, unit_type',
-      invoices: '++id, invoice_number, workshop_id, date',
-      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
-      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
-      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status'
-    }).upgrade(async tx => {
-      const items = await tx.table('return_invoice_items').toArray();
-      for (const item of items) {
-        await tx.table('return_invoice_items').update(item.id, { return_status: 'good' });
-      }
-    });
-    this.version(3).stores({
-      workshops: '++id, name, unit_type',
-      invoices: '++id, invoice_number, workshop_id, date',
-      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
-      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
-      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
-      returns: '++id, invoice_item_id, return_date, return_type'
-    });
-    this.version(4).stores({
-      workshops: '++id, name, unit_type',
-      invoices: '++id, invoice_number, workshop_id, date',
-      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
-      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
-      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
-      returns: '++id, invoice_item_id, return_date, return_type',
-      ledger_inputs: '++id, date, invoice_number, product_name, source',
-      ledger_outputs: '++id, date, invoice_number, product_name, destination, source'
-    });
-    this.version(5).stores({
-      workshops: '++id, name, unit_type',
-      invoices: '++id, invoice_number, workshop_id, date',
-      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
-      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
-      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
-      returns: '++id, invoice_item_id, return_date, return_type',
-      ledger_inputs: '++id, date, invoice_number, product_name, source',
-      ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
-      contacts: '++id, name, phone'
-    });
-  }
-}
-
-export const db = new WorkshopDB();
 
 export async function addWorkshop(workshop: Omit<Workshop, 'id'>) {
   return await db.workshops.add(workshop);
