@@ -95,6 +95,43 @@ export interface Contact {
   notes?: string;
 }
 
+export interface WarehouseEntry {
+  id?: number;
+  date: string;
+  product_name: string;
+  category?: string;
+  quantity: number;
+  unit: string;
+  reorder_point?: number;
+  raw_body_reorder_point?: number;
+  source?: string;
+  reference_number?: string;
+  notes?: string;
+}
+
+export interface WarehouseStock {
+  product_key: string;
+  model: string;
+  color: string;
+  item: string;
+  quantity: number;
+  reorder_point?: number;
+}
+
+export interface WarehouseMovement {
+  id?: number;
+  product_key: string;
+  model: string;
+  color: string;
+  item: string;
+  type: 'in' | 'out';
+  quantity: number;
+  date: string;
+  reference_number?: string;
+  counterparty?: string;
+  notes?: string;
+}
+
 class WorkshopDB extends Dexie {
   workshops!: Table<Workshop, number>;
   invoices!: Table<Invoice, number>;
@@ -105,6 +142,9 @@ class WorkshopDB extends Dexie {
   ledger_inputs!: Table<LedgerInput, number>;
   ledger_outputs!: Table<LedgerOutput, number>;
   contacts!: Table<Contact, number>;
+  warehouse_entries!: Table<WarehouseEntry, number>;
+  warehouse_stock!: Table<WarehouseStock, string>;
+  warehouse_movements!: Table<WarehouseMovement, number>;
 
   constructor() {
     super('WorkshopDB');
@@ -156,10 +196,149 @@ class WorkshopDB extends Dexie {
       ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
       contacts: '++id, name, phone'
     });
+    this.version(6).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type',
+      ledger_inputs: '++id, date, invoice_number, product_name, source',
+      ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
+      contacts: '++id, name, phone',
+      warehouse_entries: '++id, date, product_name, category, unit, source, reference_number'
+    });
+    this.version(7).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type',
+      ledger_inputs: '++id, date, invoice_number, product_name, source',
+      ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
+      contacts: '++id, name, phone',
+      warehouse_entries: '++id, date, product_name, category, unit, source, reference_number',
+      warehouse_stock: 'product_key, model, color, item'
+    });
+    this.version(8).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type',
+      ledger_inputs: '++id, date, invoice_number, product_name, source',
+      ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
+      contacts: '++id, name, phone',
+      warehouse_entries: '++id, date, product_name, category, unit, source, reference_number',
+      warehouse_stock: 'product_key, model, color, item',
+      warehouse_movements: '++id, product_key, type, date'
+    });
   }
 }
 
 export const db = new WorkshopDB();
+
+export async function addWarehouseEntry(entry: Omit<WarehouseEntry, 'id'>) {
+  if (!entry.product_name.trim()) throw new Error('نام کالا الزامی است');
+  if (!Number.isFinite(entry.quantity) || entry.quantity <= 0) throw new Error('مقدار باید بیشتر از صفر باشد');
+  if (entry.reorder_point !== undefined && (!Number.isFinite(entry.reorder_point) || entry.reorder_point < 0)) throw new Error('نقطه سفارش باید صفر یا بیشتر باشد');
+  if (entry.raw_body_reorder_point !== undefined && (!Number.isFinite(entry.raw_body_reorder_point) || entry.raw_body_reorder_point < 0)) throw new Error('نقطه سفارش تنه خام باید صفر یا بیشتر باشد');
+  if (!entry.unit.trim()) throw new Error('واحد کالا الزامی است');
+  if (!entry.date) throw new Error('تاریخ ورود الزامی است');
+  return await db.warehouse_entries.add(entry);
+}
+
+export async function getWarehouseEntries(): Promise<WarehouseEntry[]> {
+  return await db.warehouse_entries.orderBy('date').reverse().toArray();
+}
+
+export async function getWarehouseStocks(): Promise<WarehouseStock[]> {
+  return await db.warehouse_stock.toArray();
+}
+
+export async function getWarehouseStock(productKey: string): Promise<WarehouseStock | undefined> {
+  return await db.warehouse_stock.get(productKey);
+}
+
+export async function saveWarehouseInitialStocks(stocks: WarehouseStock[]): Promise<void> {
+  for (const stock of stocks) {
+    if (!Number.isFinite(stock.quantity) || stock.quantity < 0) throw new Error('موجودی باید صفر یا بیشتر باشد');
+    if (stock.reorder_point !== undefined && (!Number.isFinite(stock.reorder_point) || stock.reorder_point < 0)) {
+      throw new Error('نقطه سفارش باید صفر یا بیشتر باشد');
+    }
+  }
+  if (stocks.length === 0) return;
+  await db.transaction('rw', db.warehouse_stock, () => db.warehouse_stock.bulkPut(stocks));
+}
+
+export async function getWarehouseMovements(productKey?: string): Promise<WarehouseMovement[]> {
+  const movements = productKey
+    ? await db.warehouse_movements.where('product_key').equals(productKey).toArray()
+    : await db.warehouse_movements.toArray();
+  return movements.sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0));
+}
+
+export async function getWarehouseCurrentStocks(): Promise<WarehouseStock[]> {
+  const [initialStocks, movements] = await Promise.all([
+    db.warehouse_stock.toArray(),
+    db.warehouse_movements.toArray()
+  ]);
+  const stocks = new Map(initialStocks.map(stock => [stock.product_key, { ...stock }]));
+  for (const movement of movements) {
+    const stock = stocks.get(movement.product_key) ?? {
+      product_key: movement.product_key,
+      model: movement.model,
+      color: movement.color,
+      item: movement.item,
+      quantity: 0
+    };
+    stock.quantity += movement.type === 'in' ? movement.quantity : -movement.quantity;
+    stocks.set(movement.product_key, stock);
+  }
+  return [...stocks.values()];
+}
+
+export async function getWarehouseCurrentStock(productKey: string): Promise<WarehouseStock | undefined> {
+  const [initialStock, movements] = await Promise.all([
+    db.warehouse_stock.get(productKey),
+    db.warehouse_movements.where('product_key').equals(productKey).toArray()
+  ]);
+  if (!initialStock && movements.length === 0) return undefined;
+  const stock: WarehouseStock = initialStock
+    ? { ...initialStock }
+    : {
+        product_key: productKey,
+        model: movements[0].model,
+        color: movements[0].color,
+        item: movements[0].item,
+        quantity: 0
+      };
+  for (const movement of movements) {
+    stock.quantity += movement.type === 'in' ? movement.quantity : -movement.quantity;
+  }
+  return stock;
+}
+
+export async function addWarehouseMovement(movement: Omit<WarehouseMovement, 'id'>): Promise<void> {
+  if (!movement.product_key) throw new Error('محصول را انتخاب کنید');
+  if (!Number.isFinite(movement.quantity) || movement.quantity <= 0) throw new Error('مقدار باید بیشتر از صفر باشد');
+  if (!movement.date) throw new Error('تاریخ گردش الزامی است');
+
+  await db.transaction('rw', db.warehouse_stock, db.warehouse_movements, async () => {
+    if (movement.type === 'out') {
+      const initialStock = await db.warehouse_stock.get(movement.product_key);
+      const previousMovements = await db.warehouse_movements.where('product_key').equals(movement.product_key).toArray();
+      const available = (initialStock?.quantity ?? 0) + previousMovements.reduce(
+        (quantity, item) => quantity + (item.type === 'in' ? item.quantity : -item.quantity),
+        0
+      );
+      if (movement.quantity > available) throw new Error(`موجودی کافی نیست؛ موجودی فعلی ${available} است`);
+    }
+    await db.warehouse_movements.add(movement);
+  });
+}
 
 export async function addWorkshop(workshop: Omit<Workshop, 'id'>) {
   return await db.workshops.add(workshop);
