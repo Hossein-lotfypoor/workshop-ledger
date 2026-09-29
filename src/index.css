@@ -216,3 +216,14 @@
   background: #e2e8f0;
   color: #0f172a;
 }
+
+@media (max-width: 1023px) {
+  .warehouse-matrix {
+    min-width: 1400px;
+  }
+
+  .warehouse-matrix .warehouse-model-column {
+    width: 96px;
+    min-width: 96px;
+  }
+}
