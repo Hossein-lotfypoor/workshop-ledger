@@ -1,4 +1,5 @@
 // src/App.tsx
+import { useState } from 'react';
 import { HashRouter, Routes, Route, NavLink } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import InvoiceDetails from './pages/InvoiceDetails';
@@ -15,21 +16,42 @@ import WarehouseProduct from './pages/WarehouseProduct';
 import WarehouseInitialStock from './pages/WarehouseInitialStock';
 
 function App() {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const primaryLinks = [
+    { to: '/', label: 'خانه', icon: '⌂', end: true },
+    { to: '/new-invoice', label: 'فاکتور', icon: '▤' },
+    { to: '/ledger', label: 'دفتر', icon: '▥' },
+    { to: '/warehouse', label: 'انبار', icon: '▦' }
+  ];
+  const moreLinks = [
+    { to: '/ledger-reports', label: 'گزارش سررسید' },
+    { to: '/workshops', label: 'کارگاه‌ها' },
+    { to: '/reports', label: 'گزارش‌ها' },
+    { to: '/weight-calc', label: 'محاسبه وزن' },
+    { to: '/contacts', label: 'آدرس و تلفن' },
+    { to: '/warehouse/bulk-entry', label: 'ورودی کلی انبار' }
+  ];
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `app-nav-link${isActive ? ' app-nav-link--active' : ''}`;
+
   return (
     <HashRouter>
-      <div className="min-h-screen bg-gray-100" dir="rtl">
-        <nav className="bg-slate-800 text-white p-3 flex gap-4 justify-center flex-wrap">
-          <NavLink to="/" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>داشبورد</NavLink>
-          <NavLink to="/new-invoice" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>فاکتور جدید</NavLink>
-          <NavLink to="/ledger" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-amber-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📖 ورود و خروج (سررسید)</NavLink>
-          <NavLink to="/ledger-reports" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-amber-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📊 گزارش سررسید</NavLink>
-          <NavLink to="/workshops" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>کارگاه‌ها</NavLink>
-          <NavLink to="/reports" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>گزارش‌ها</NavLink>
-          <NavLink to="/weight-calc" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📦 محاسبه وزن</NavLink>
-          <NavLink to="/contacts" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-violet-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📇 آدرس و تلفن</NavLink>
-          <NavLink to="/warehouse" className={({ isActive }) => `px-3 py-1 rounded transition-colors ${isActive ? 'bg-emerald-600 text-white font-bold' : 'hover:bg-slate-700'}`}>📦 انبار</NavLink>
-        </nav>
-        <main className="p-4">
+      <div className="app-shell" dir="rtl">
+        <header className="app-header">
+          <div className="app-header-inner">
+            <NavLink to="/" className="app-brand" aria-label="دفتر کارگاه، صفحه خانه">
+              <span className="app-brand-mark" aria-hidden="true"><span /><span /><span /></span>
+              <span className="app-brand-copy"><strong>دفتر کارگاه</strong><small>مدیریت روزانه</small></span>
+            </NavLink>
+            <nav className="app-desktop-nav" aria-label="ناوبری اصلی">
+              {primaryLinks.map(link => <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClass}>
+                <span className="app-nav-icon" aria-hidden="true">{link.icon}</span>{link.label}
+              </NavLink>)}
+              {moreLinks.map(link => <NavLink key={link.to} to={link.to} className={navLinkClass}>{link.label}</NavLink>)}
+            </nav>
+          </div>
+        </header>
+        <main className="app-main">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/invoice/:id" element={<InvoiceDetails />} />
@@ -47,6 +69,25 @@ function App() {
             <Route path="/warehouse/product/:model/:color/:item" element={<WarehouseProduct />} />
           </Routes>
         </main>
+        <nav className="app-mobile-nav" aria-label="ناوبری موبایل">
+          {primaryLinks.map(link => <NavLink key={link.to} to={link.to} end={link.end} className={navLinkClass}>
+            <span className="app-nav-icon" aria-hidden="true">{link.icon}</span><span>{link.label}</span>
+          </NavLink>)}
+          <button type="button" className={`app-nav-link app-more-button${moreOpen ? ' app-nav-link--active' : ''}`} onClick={() => setMoreOpen(true)} aria-expanded={moreOpen} aria-haspopup="dialog">
+            <span className="app-nav-icon" aria-hidden="true">•••</span><span>بیشتر</span>
+          </button>
+        </nav>
+        {moreOpen && <div className="app-menu-backdrop" onClick={() => setMoreOpen(false)}>
+          <section className="app-mobile-menu" role="dialog" aria-modal="true" aria-labelledby="app-more-title" onClick={event => event.stopPropagation()}>
+            <div className="app-mobile-menu-heading">
+              <h2 id="app-more-title">بخش‌های دیگر</h2>
+              <button type="button" onClick={() => setMoreOpen(false)} aria-label="بستن منو">×</button>
+            </div>
+            <div className="app-mobile-menu-links">
+              {moreLinks.map(link => <NavLink key={link.to} to={link.to} className={navLinkClass} onClick={() => setMoreOpen(false)}>{link.label}<span aria-hidden="true">‹</span></NavLink>)}
+            </div>
+          </section>
+        </div>}
       </div>
     </HashRouter>
   );
