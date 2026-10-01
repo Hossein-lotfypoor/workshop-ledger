@@ -132,6 +132,10 @@ export interface WarehouseMovement {
   notes?: string;
 }
 
+export interface WarehouseModel {
+  name: string;
+}
+
 class WorkshopDB extends Dexie {
   workshops!: Table<Workshop, number>;
   invoices!: Table<Invoice, number>;
@@ -145,6 +149,7 @@ class WorkshopDB extends Dexie {
   warehouse_entries!: Table<WarehouseEntry, number>;
   warehouse_stock!: Table<WarehouseStock, string>;
   warehouse_movements!: Table<WarehouseMovement, number>;
+  warehouse_models!: Table<WarehouseModel, string>;
 
   constructor() {
     super('WorkshopDB');
@@ -235,6 +240,21 @@ class WorkshopDB extends Dexie {
       warehouse_stock: 'product_key, model, color, item',
       warehouse_movements: '++id, product_key, type, date'
     });
+    this.version(9).stores({
+      workshops: '++id, name, unit_type',
+      invoices: '++id, invoice_number, workshop_id, date',
+      invoice_items: '++id, invoice_id, line_number, product_name, unit_type, status, is_settled, remaining_quantity, remaining_weight',
+      return_invoices: '++id, return_invoice_number, workshop_id, return_date, notes',
+      return_invoice_items: '++id, return_invoice_id, original_invoice_item_id, return_status',
+      returns: '++id, invoice_item_id, return_date, return_type',
+      ledger_inputs: '++id, date, invoice_number, product_name, source',
+      ledger_outputs: '++id, date, invoice_number, product_name, destination, source',
+      contacts: '++id, name, phone',
+      warehouse_entries: '++id, date, product_name, category, unit, source, reference_number',
+      warehouse_stock: 'product_key, model, color, item',
+      warehouse_movements: '++id, product_key, type, date',
+      warehouse_models: '&name'
+    });
   }
 }
 
@@ -271,6 +291,21 @@ export async function saveWarehouseInitialStocks(stocks: WarehouseStock[]): Prom
   }
   if (stocks.length === 0) return;
   await db.transaction('rw', db.warehouse_stock, () => db.warehouse_stock.bulkPut(stocks));
+}
+
+export async function getWarehouseModels(): Promise<WarehouseModel[]> {
+  return db.warehouse_models.orderBy('name').toArray();
+}
+
+export async function addWarehouseModel(name: string): Promise<WarehouseModel> {
+  const normalizedName = name.trim();
+  if (!normalizedName) throw new Error('نام مدل را وارد کنید.');
+  const models = await db.warehouse_models.toArray();
+  if (models.some(model => model.name.toLocaleLowerCase('fa') === normalizedName.toLocaleLowerCase('fa'))) {
+    throw new Error('این مدل قبلاً اضافه شده است.');
+  }
+  await db.warehouse_models.add({ name: normalizedName });
+  return { name: normalizedName };
 }
 
 export async function getWarehouseMovements(productKey?: string): Promise<WarehouseMovement[]> {

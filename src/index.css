@@ -189,6 +189,10 @@
 
 .warehouse-matrix-shell {
   border: 2px solid #475569;
+  max-height: min(72vh, 760px);
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .warehouse-matrix .warehouse-model-column {
@@ -206,6 +210,25 @@
   border-top: 1px solid #64748b;
 }
 
+.warehouse-matrix thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #1e293b;
+}
+
+.warehouse-matrix thead tr:first-child th:first-child {
+  right: 0;
+  z-index: 40;
+}
+
+.warehouse-matrix thead tr:nth-child(2) th {
+  position: sticky;
+  top: 44px;
+  z-index: 29;
+  background: #f1f5f9;
+}
+
 .warehouse-matrix .warehouse-group-start {
   border-right: 3px solid #475569 !important;
 }
@@ -218,6 +241,10 @@
 }
 
 @media (max-width: 1023px) {
+  .warehouse-matrix-shell {
+    max-height: calc(100dvh - 150px);
+  }
+
   .warehouse-matrix {
     min-width: 1400px;
   }
@@ -226,4 +253,5 @@
     width: 96px;
     min-width: 96px;
   }
+
 }

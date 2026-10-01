@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   addWarehouseMovement,
   getWarehouseCurrentStock,
+  getWarehouseModels,
   getWarehouseMovements,
   type WarehouseMovement,
   type WarehouseStock
@@ -10,10 +11,10 @@ import {
 import { getCurrentJalaliDate, toJalali, toMiladi } from '../utils/dateUtils';
 import {
   getWarehouseItemsForModel,
+  getWarehouseCatalogProducts,
   getWarehouseProductKey,
-  warehouseCatalogProducts,
   warehouseColors,
-  warehouseModelOptions
+  getWarehouseModelOptions
 } from '../utils/warehouseProducts';
 
 type MovementType = 'in' | 'out';
@@ -33,6 +34,7 @@ const emptyForm = () => ({
 const WarehouseMovementPage: React.FC<WarehouseMovementPageProps> = ({ type }) => {
   const isIncoming = type === 'in';
   const [model, setModel] = useState('');
+  const [customModels, setCustomModels] = useState<string[]>([]);
   const [color, setColor] = useState('');
   const [item, setItem] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -42,9 +44,11 @@ const WarehouseMovementPage: React.FC<WarehouseMovementPageProps> = ({ type }) =
   const [saving, setSaving] = useState(false);
 
   const productKey = model && color && item ? getWarehouseProductKey(model, color, item) : '';
+  const catalogProducts = getWarehouseCatalogProducts(customModels);
   const selectedProduct = productKey
-    ? warehouseCatalogProducts.find(product => product.key === productKey)
+    ? catalogProducts.find(product => product.key === productKey)
     : undefined;
+  const modelOptions = getWarehouseModelOptions(customModels);
   const itemOptions = model ? getWarehouseItemsForModel(model) : [];
   const inputClass = 'w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600';
   const labelClass = 'mb-1 block text-sm font-medium text-slate-700';
@@ -53,6 +57,7 @@ const WarehouseMovementPage: React.FC<WarehouseMovementPageProps> = ({ type }) =
 
   useEffect(() => {
     void loadMovements();
+    void getWarehouseModels().then(models => setCustomModels(models.map(savedModel => savedModel.name)));
   }, []);
 
   useEffect(() => {
@@ -121,7 +126,7 @@ const WarehouseMovementPage: React.FC<WarehouseMovementPageProps> = ({ type }) =
             <label className={labelClass} htmlFor="movement-model">مدل / گروه کالا *</label>
             <select id="movement-model" className={inputClass} value={model} onChange={event => { setModel(event.target.value); setColor(''); setItem(''); setError(''); }} required>
               <option value="">انتخاب مدل</option>
-              {warehouseModelOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              {modelOptions.map(option => <option key={option} value={option}>{option}</option>)}
             </select>
           </div>
           <div>

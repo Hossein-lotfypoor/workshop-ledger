@@ -1,26 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  getWarehouseModels,
   getWarehouseStocks,
   saveWarehouseInitialStocks,
   type WarehouseStock
 } from '../db/database';
-import { warehouseCatalogProducts } from '../utils/warehouseProducts';
+import { getWarehouseCatalogProducts } from '../utils/warehouseProducts';
 
 type StockFields = { quantity: string; reorder_point: string };
 
 const WarehouseInitialStock: React.FC = () => {
   const [values, setValues] = useState<Record<string, StockFields>>({});
+  const [customModels, setCustomModels] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const catalogProducts = getWarehouseCatalogProducts(customModels);
 
   useEffect(() => {
     let active = true;
-    void getWarehouseStocks().then(stocks => {
+    void Promise.all([getWarehouseStocks(), getWarehouseModels()]).then(([stocks, models]) => {
       if (!active) return;
+      setCustomModels(models.map(model => model.name));
       setValues(Object.fromEntries(stocks.map(stock => [stock.product_key, {
         quantity: String(stock.quantity),
         reorder_point: stock.reorder_point === undefined ? '' : String(stock.reorder_point)
@@ -49,7 +53,7 @@ const WarehouseInitialStock: React.FC = () => {
     setNotice('');
 
     const stocks: WarehouseStock[] = [];
-    for (const product of warehouseCatalogProducts) {
+    for (const product of catalogProducts) {
       const fields = values[product.key];
       if (!fields || (fields.quantity === '' && fields.reorder_point === '')) continue;
       const quantity = fields.quantity === '' ? 0 : Number(fields.quantity);
@@ -98,7 +102,7 @@ const WarehouseInitialStock: React.FC = () => {
   };
 
   const normalizedSearch = search.trim().toLocaleLowerCase('fa');
-  const visibleProducts = warehouseCatalogProducts.filter(product =>
+  const visibleProducts = catalogProducts.filter(product =>
     [product.model, product.color, product.item].some(value => value.toLocaleLowerCase('fa').includes(normalizedSearch))
   );
   const inputClass = 'w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600';
@@ -111,7 +115,7 @@ const WarehouseInitialStock: React.FC = () => {
           <p className="mt-3 text-sm font-semibold text-emerald-700">مدیریت موجودی</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">ورودی کلی | موجودی پایه</h1>
         </div>
-        <p className="text-sm text-slate-600">{warehouseCatalogProducts.length.toLocaleString('fa-IR')} محصول پیش‌فرض</p>
+        <p className="text-sm text-slate-600">{catalogProducts.length.toLocaleString('fa-IR')} محصول</p>
       </header>
 
       <form onSubmit={handleSave} className="space-y-3">

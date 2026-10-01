@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getWarehouseCurrentStocks, type WarehouseStock } from '../db/database';
+import { addWarehouseModel, getWarehouseCurrentStocks, getWarehouseModels, type WarehouseStock } from '../db/database';
 import {
   getWarehouseProductKey,
   multiUseSinkTypes,
@@ -10,45 +10,57 @@ import {
   warehouseProductTypes as products
 } from '../utils/warehouseProducts';
 
-type ModelRow = {
-  id: number;
-  name: string;
-};
-
-const startingModels = [
-  ...modelNames.map((name, index) => ({ id: index + 1, name })),
-  ...Array.from({ length: 3 }, (_, index) => ({ id: modelNames.length + index + 1, name: '' }))
-];
-
 const WarehouseMatrix: React.FC = () => {
-  const [models, setModels] = useState<ModelRow[]>(startingModels);
+  const [customModels, setCustomModels] = useState<string[]>([]);
   const [stocks, setStocks] = useState<Record<string, WarehouseStock>>({});
+  const [modelModalOpen, setModelModalOpen] = useState(false);
+  const [newModelName, setNewModelName] = useState('');
+  const [modelError, setModelError] = useState('');
+  const [savingModel, setSavingModel] = useState(false);
+  const models = [...modelNames, ...customModels].map((name, id) => ({ name, id: id + 1 }));
 
   useEffect(() => {
-    void getWarehouseCurrentStocks().then(items => {
+    void Promise.all([getWarehouseModels(), getWarehouseCurrentStocks()]).then(([savedModels, items]) => {
+      setCustomModels(savedModels.map(model => model.name));
       setStocks(Object.fromEntries(items.map(stock => [stock.product_key, stock])));
     });
   }, []);
 
-  const addModel = () => {
-    setModels(current => {
-      const id = Math.max(0, ...current.map(model => model.id)) + 1;
-      return [...current, { id, name: '' }];
-    });
+  const handleAddModel = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedName = newModelName.trim();
+    if (!normalizedName) return setModelError('نام مدل را وارد کنید.');
+    const existingModels = [...modelNames, ...customModels];
+    if (existingModels.some(name => name.toLocaleLowerCase('fa') === normalizedName.toLocaleLowerCase('fa'))) {
+      return setModelError('این مدل از قبل وجود دارد.');
+    }
+
+    setSavingModel(true);
+    setModelError('');
+    try {
+      const savedModel = await addWarehouseModel(normalizedName);
+      setCustomModels(current => [...current, savedModel.name].sort((a, b) => a.localeCompare(b, 'fa')));
+      setNewModelName('');
+      setModelModalOpen(false);
+    } catch (error) {
+      setModelError(error instanceof Error ? error.message : 'ذخیره مدل انجام نشد.');
+    } finally {
+      setSavingModel(false);
+    }
   };
 
   return (
     <div className="mx-auto max-w-full space-y-5 p-2" dir="rtl">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-300 pb-4">
         <div>
-          <p className="text-xs font-semibold text-emerald-700">مدیریت موجودی <span className="px-1 text-slate-400">/</span> ۲۱ مدل، ۷ رنگ و ۵ گروه کالا</p>
+          <p className="text-xs font-semibold text-emerald-700">مدیریت موجودی <span className="px-1 text-slate-400">/</span> {models.length} مدل، ۷ رنگ و ۵ گروه کالا</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">ماتریس محصولات انبار</h1>
         </div>
         <div className="flex gap-2">
           <Link to="/warehouse/bulk-entry" className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800">ورودی کلی</Link>
           <Link to="/warehouse/intake" className="rounded border border-emerald-700 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50">ثبت ورود کالا</Link>
           <Link to="/warehouse/dispatch" className="rounded border border-orange-700 bg-white px-4 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-50">ثبت خروج کالا</Link>
-          <button type="button" onClick={addModel} className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800">＋ افزودن مدل خالی</button>
+          <button type="button" onClick={() => { setModelError(''); setModelModalOpen(true); }} className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800">＋ افزودن مدل جدید</button>
         </div>
       </header>
 
@@ -83,7 +95,7 @@ const WarehouseMatrix: React.FC = () => {
                 {colors.flatMap((color, colorIndex) => products.map((product, productIndex) => (
                   <td key={`${color}-${product}`} className={`border-b border-l border-slate-300 p-1 ${productIndex === 0 && colorIndex > 0 ? 'warehouse-group-start' : ''}`}>
                     {(() => {
-                      const modelName = model.name || `مدل جدید ${model.id - modelNames.length}`;
+                      const modelName = model.name;
                       const stock = stocks[getWarehouseProductKey(modelName, color, product)];
                       const quantity = stock?.quantity ?? 0;
                       const needsReorder = stock?.reorder_point !== undefined && quantity <= stock.reorder_point;
@@ -129,6 +141,27 @@ const WarehouseMatrix: React.FC = () => {
           </tbody>
         </table>
       </div>
+      {modelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setModelModalOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="add-model-title" className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+              <h2 id="add-model-title" className="text-lg font-bold text-slate-900">افزودن مدل جدید</h2>
+              <button type="button" onClick={() => setModelModalOpen(false)} aria-label="بستن" className="flex h-9 w-9 items-center justify-center rounded bg-slate-100 text-xl text-slate-600">×</button>
+            </div>
+            <form onSubmit={handleAddModel} className="space-y-4">
+              <div>
+                <label htmlFor="new-warehouse-model" className="mb-1 block text-sm font-medium text-slate-700">نام مدل *</label>
+                <input id="new-warehouse-model" autoFocus className="w-full rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600" value={newModelName} onChange={event => { setNewModelName(event.target.value); setModelError(''); }} placeholder="نام مدل را بنویسید" required />
+              </div>
+              {modelError && <p role="alert" className="text-sm text-red-700">{modelError}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setModelModalOpen(false)} className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700">انصراف</button>
+                <button type="submit" disabled={savingModel} className="rounded bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{savingModel ? 'در حال ذخیره...' : 'ذخیره مدل'}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
