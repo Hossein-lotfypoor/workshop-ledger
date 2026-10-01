@@ -8,6 +8,7 @@ import {
   type WarehouseMovement,
   type WarehouseStock
 } from '../db/database';
+import WarehouseVoiceAssistant from '../components/WarehouseVoiceAssistant';
 import { getCurrentJalaliDate, toJalali, toMiladi } from '../utils/dateUtils';
 import {
   getWarehouseItemsForModel,
@@ -54,6 +55,16 @@ const WarehouseMovementPage: React.FC<WarehouseMovementPageProps> = ({ type }) =
   const labelClass = 'mb-1 block text-sm font-medium text-slate-700';
 
   const loadMovements = async () => setMovements(await getWarehouseMovements());
+
+  const refreshVoiceInventory = async (updatedProductKeys: string[]) => {
+    const updatedProductKey = updatedProductKeys.find(key => key === productKey);
+    if (updatedProductKey) setStock(await getWarehouseCurrentStock(updatedProductKey));
+    if (updatedProductKeys.some(key => key === productKey)) await loadMovements();
+  };
+
+  const handleVoiceModelAdded = (name: string) => {
+    setCustomModels(current => current.includes(name) ? current : [...current, name].sort((a, b) => a.localeCompare(b, 'fa')));
+  };
 
   useEffect(() => {
     void loadMovements();
@@ -118,6 +129,8 @@ const WarehouseMovementPage: React.FC<WarehouseMovementPageProps> = ({ type }) =
           <Link to="/warehouse/dispatch" aria-current={!isIncoming ? 'page' : undefined} className={`rounded border px-4 py-2 text-sm font-semibold ${!isIncoming ? 'border-orange-700 bg-orange-700 text-white' : 'border-orange-700 bg-white text-orange-800 hover:bg-orange-50'}`}>ثبت خروج کالا</Link>
         </div>
       </header>
+
+      <WarehouseVoiceAssistant customModels={customModels} onModelAdded={handleVoiceModelAdded} onInventoryChanged={refreshVoiceInventory} />
 
       <section aria-labelledby="warehouse-movement-title">
         <h2 id="warehouse-movement-title" className="mb-4 text-lg font-bold text-slate-800">مشخصات گردش</h2>

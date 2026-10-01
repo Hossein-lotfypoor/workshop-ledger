@@ -3,31 +3,71 @@
 
 
 @font-face {
-  font-family: "Dana FaNum";
-  src: url("/fonts/Dana/woff2/DanaFaNum-Regular.woff2") format("woff2");
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebThin.woff2") format("woff2");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebLight.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebRegular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Dana FaNum";
-  src: url("/fonts/Dana/woff2/DanaFaNum-Medium.woff2") format("woff2");
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebMedium.woff2") format("woff2");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Dana FaNum";
-  src: url("/fonts/Dana/woff2/DanaFaNum-DemiBold.woff2") format("woff2");
-  font-weight: 600;
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebBold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebBlack.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Iran Yekan";
+  src: url("/fonts/IranYekan/woff2/IRANYekanWebExtraBlack.woff2") format("woff2");
+  font-weight: 950;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  --font-sans: "Dana FaNum", Tahoma, sans-serif;
+  --font-sans: "Iran Yekan", Tahoma, sans-serif;
 }
 
 @layer base {
@@ -104,7 +144,7 @@
 
 .ledger-handwriting {
   margin: 0;
-  font-family: "Katibeh", "Dana FaNum", cursive;
+  font-family: "Katibeh", "Iran Yekan", cursive;
   font-size: 1.35rem;
   line-height: 1.15;
   letter-spacing: 0.01em;

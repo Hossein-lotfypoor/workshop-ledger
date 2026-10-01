@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { addWarehouseModel, getWarehouseCurrentStocks, getWarehouseModels, type WarehouseStock } from '../db/database';
+import { addWarehouseModel, getWarehouseCurrentStock, getWarehouseCurrentStocks, getWarehouseModels, type WarehouseStock } from '../db/database';
+import WarehouseVoiceAssistant from '../components/WarehouseVoiceAssistant';
 import {
   getWarehouseProductKey,
   multiUseSinkTypes,
@@ -25,6 +26,23 @@ const WarehouseMatrix: React.FC = () => {
       setStocks(Object.fromEntries(items.map(stock => [stock.product_key, stock])));
     });
   }, []);
+
+  const refreshStocks = async (productKeys: string[]) => {
+    const refreshedStocks = await Promise.all(productKeys.map(productKey => getWarehouseCurrentStock(productKey)));
+    setStocks(current => {
+      const next = { ...current };
+      productKeys.forEach((productKey, index) => {
+        const stock = refreshedStocks[index];
+        if (stock) next[productKey] = stock;
+        else delete next[productKey];
+      });
+      return next;
+    });
+  };
+
+  const handleVoiceModelAdded = (name: string) => {
+    setCustomModels(current => current.includes(name) ? current : [...current, name].sort((a, b) => a.localeCompare(b, 'fa')));
+  };
 
   const handleAddModel = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -63,6 +81,8 @@ const WarehouseMatrix: React.FC = () => {
           <button type="button" onClick={() => { setModelError(''); setModelModalOpen(true); }} className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800">＋ افزودن مدل جدید</button>
         </div>
       </header>
+
+      <WarehouseVoiceAssistant customModels={customModels} onModelAdded={handleVoiceModelAdded} onInventoryChanged={refreshStocks} />
 
       <div className="warehouse-matrix-shell overflow-hidden rounded-lg bg-white shadow-sm">
         <table className="warehouse-matrix w-full table-fixed border-separate border-spacing-0 text-center">

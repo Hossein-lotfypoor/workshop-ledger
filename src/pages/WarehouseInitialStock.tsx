@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getWarehouseModels,
+  getWarehouseStock,
   getWarehouseStocks,
   saveWarehouseInitialStocks,
   type WarehouseStock
 } from '../db/database';
+import WarehouseVoiceAssistant from '../components/WarehouseVoiceAssistant';
 import { getWarehouseCatalogProducts } from '../utils/warehouseProducts';
 
 type StockFields = { quantity: string; reorder_point: string };
@@ -19,6 +21,25 @@ const WarehouseInitialStock: React.FC = () => {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const catalogProducts = getWarehouseCatalogProducts(customModels);
+
+  const refreshVoiceStock = async (productKeys: string[]) => {
+    const stocks = await Promise.all(productKeys.map(productKey => getWarehouseStock(productKey)));
+    setValues(current => {
+      const next = { ...current };
+      productKeys.forEach((productKey, index) => {
+        const stock = stocks[index];
+        next[productKey] = {
+          quantity: String(stock?.quantity ?? 0),
+          reorder_point: stock?.reorder_point === undefined ? '' : String(stock.reorder_point)
+        };
+      });
+      return next;
+    });
+  };
+
+  const handleVoiceModelAdded = (name: string) => {
+    setCustomModels(current => current.includes(name) ? current : [...current, name].sort((a, b) => a.localeCompare(b, 'fa')));
+  };
 
   useEffect(() => {
     let active = true;
@@ -117,6 +138,8 @@ const WarehouseInitialStock: React.FC = () => {
         </div>
         <p className="text-sm text-slate-600">{catalogProducts.length.toLocaleString('fa-IR')} محصول</p>
       </header>
+
+      <WarehouseVoiceAssistant customModels={customModels} onModelAdded={handleVoiceModelAdded} onInventoryChanged={refreshVoiceStock} />
 
       <form onSubmit={handleSave} className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">

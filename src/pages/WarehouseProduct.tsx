@@ -1,15 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getWarehouseCurrentStock, getWarehouseMovements, type WarehouseMovement, type WarehouseStock } from '../db/database';
+import { getWarehouseCurrentStock, getWarehouseModels, getWarehouseMovements, type WarehouseMovement, type WarehouseStock } from '../db/database';
+import WarehouseVoiceAssistant from '../components/WarehouseVoiceAssistant';
 import { getWarehouseProductKey } from '../utils/warehouseProducts';
 
 const WarehouseProduct: React.FC = () => {
   const { model, color, item } = useParams();
   const [stock, setStock] = useState<WarehouseStock>();
   const [movements, setMovements] = useState<WarehouseMovement[]>([]);
+  const [customModels, setCustomModels] = useState<string[]>([]);
   const productKey = model && color && item ? getWarehouseProductKey(model, color, item) : '';
 
+  const refreshVoiceProduct = async (updatedProductKeys: string[]) => {
+    if (!updatedProductKeys.includes(productKey)) return;
+    const [value, history] = await Promise.all([getWarehouseCurrentStock(productKey), getWarehouseMovements(productKey)]);
+    setStock(value);
+    setMovements(history);
+  };
+
   useEffect(() => {
+    void getWarehouseModels().then(models => setCustomModels(models.map(savedModel => savedModel.name)));
     let active = true;
     if (productKey) {
       void Promise.all([getWarehouseCurrentStock(productKey), getWarehouseMovements(productKey)]).then(([value, history]) => {
@@ -24,6 +34,12 @@ const WarehouseProduct: React.FC = () => {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4" dir="rtl">
       <Link to="/warehouse" className="text-sm font-semibold text-emerald-800 hover:underline">← بازگشت به ماتریس انبار</Link>
+
+      <WarehouseVoiceAssistant
+        customModels={customModels}
+        onModelAdded={name => setCustomModels(current => current.includes(name) ? current : [...current, name].sort((a, b) => a.localeCompare(b, 'fa')))}
+        onInventoryChanged={refreshVoiceProduct}
+      />
 
       <header className="border-b border-slate-300 pb-4">
         <p className="text-sm font-semibold text-emerald-700">مشخصات محصول</p>
