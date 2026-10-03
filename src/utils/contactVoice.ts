@@ -73,6 +73,23 @@ export function formatContactAnswerFull(contact: Contact): string {
   return `${contact.name}\n${formatContactAnswer(contact)}`;
 }
 
+export function isSecureVoiceContext(): boolean {
+  if (typeof window === 'undefined') return false;
+  const protocol = window.location.protocol;
+  return protocol === 'https:' || (protocol === 'http:' && window.location.hostname === 'localhost');
+}
+
+export function getSpeechRecognitionSupportMessage(): string | null {
+  const SpeechRecognition = getSpeechRecognitionCtor();
+  if (!SpeechRecognition) {
+    return 'سیستم صوتی در این مرورگر پشتیبانی نمی‌شود. روی موبایل از Google Chrome یا Samsung Internet استفاده کنید.';
+  }
+  if (!isSecureVoiceContext()) {
+    return 'برای استفاده از سیستم صوتی در موبایل، باید روی HTTPS یا localhost باشید و اجازه میکروفون را بدهید.';
+  }
+  return null;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getSpeechRecognitionCtor(): (new () => any) | null {
   const w = window as { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any };

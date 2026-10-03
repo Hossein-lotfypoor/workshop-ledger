@@ -105,8 +105,9 @@ function getProductSearchText(text: string, action: RequestedAction): string {
 
 function getNewModelName(text: string): string | null {
   const normalized = normalizeWarehouseSpeechText(text);
-  if (!normalized.includes('مدل جدید') && !normalized.includes('افزودن مدل')) return null;
-  return normalized.replace(/^.*?(?:افزودن مدل(?: جدید)?|مدل جدید)\s*/, '').trim() || null;
+  const prefix = normalized.match(/^(?:(?:افزودن|اضافه کردن|ثبت)\s+(?:مدل|کالا|کالای|محصول)(?:\s+جدید)?|(?:مدل|کالا|کالای|محصول)\s+جدید)\s*/);
+  if (!prefix) return null;
+  return normalized.slice(prefix[0].length).replace(/^مدل\s+/, '').trim() || null;
 }
 
 function describeProduct(product: WarehouseCatalogProduct): string {
@@ -164,7 +165,7 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
     const newModel = getNewModelName(text);
     if (newModel) {
       setPendingAction({ kind: 'add-model', model: newModel });
-      setStatus(`افزودن مدل «${newModel}» در انتظار تأیید است.`);
+      setStatus(`افزودن مدل/محصول «${newModel}» در انتظار تأیید است.`);
       return;
     }
 
@@ -191,43 +192,59 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
 
   const handleStartListening = async () => {
     const Recognition = getRecognitionConstructor();
-    if (!Recognition || !Recognition.available || !Recognition.install) {
-      setStatus('این مرورگر تشخیص گفتار آفلاین را پشتیبانی نمی‌کند. فرمان را تایپ کن؛ دیکته‌ی صفحه‌کلید فقط در صورت پشتیبانی خود دستگاه قابل استفاده است.');
+    if (!Recognition) {
+      setStatus('این مرورگر از تشخیص گفتار پشتیبانی نمی‌کند. روی موبایل از Google Chrome یا Samsung Internet استفاده کنید.');
       return;
     }
 
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      setStatus('برای استفاده از سیستم صوتی در موبایل، باید روی HTTPS یا localhost باشید و اجازه میکروفون را بدهید.');
+      return;
+    }
+
+    const offlineRecognizer = Recognition as LocalRecognitionConstructor & {
+      available?: (options: { langs: string[]; processLocally: boolean; quality: string }) => Promise<string>;
+      install?: (options: { langs: string[]; processLocally: boolean; quality: string }) => Promise<boolean>;
+    };
+
     setBusy(true);
-    setStatus('در حال بررسی بسته‌ی گفتار فارسی روی دستگاه...');
+    setStatus('در حال بررسی حالت صوتی روی دستگاه...');
     try {
-      const options = { langs: ['fa-IR'], processLocally: true, quality: 'command' };
-      let availability = await Recognition.available(options);
-      if (availability === 'downloadable') {
-        setStatus('برای استفاده‌ی آفلاین، بسته‌ی گفتار فارسی یک‌بار دانلود می‌شود.');
-        const installed = await Recognition.install(options);
-        if (!installed) throw new Error('بسته‌ی فارسی روی این دستگاه قابل نصب نیست.');
-        availability = await Recognition.available(options);
-      }
-      if (availability === 'downloading') {
-        throw new Error('بسته‌ی فارسی در حال دانلود است؛ پس از پایان، دوباره شروع کن.');
-      }
-      if (availability !== 'available') {
-        throw new Error('تشخیص آفلاین فارسی در این مرورگر در دسترس نیست.');
+      if (offlineRecognizer.available && offlineRecognizer.install) {
+        const options = { langs: ['fa-IR'], processLocally: true, quality: 'command' };
+        let availability = await offlineRecognizer.available(options);
+        if (availability === 'downloadable') {
+          setStatus('برای استفاده‌ی آفلاین، بسته‌ی گفتار فارسی یک‌بار دانلود می‌شود.');
+          const installed = await offlineRecognizer.install(options);
+          if (!installed) throw new Error('بسته‌ی فارسی روی این دستگاه قابل نصب نیست.');
+          availability = await offlineRecognizer.available(options);
+        }
+        if (availability === 'downloading') {
+          throw new Error('بسته‌ی فارسی در حال دانلود است؛ پس از پایان، دوباره شروع کن.');
+        }
+        if (availability !== 'available') {
+          throw new Error('تشخیص آفلاین فارسی در این مرورگر در دسترس نیست.');
+        }
       }
 
       const recognition = new Recognition();
       recognition.lang = 'fa-IR';
-      recognition.processLocally = true;
+      if ('processLocally' in recognition) {
+        recognition.processLocally = true;
+      }
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
       recognition.onstart = () => {
         setIsListening(true);
-        setStatus('در حال شنیدن فرمان فارسی به‌صورت محلی...');
+        setStatus('در حال شنیدن فرمان فارسی...');
       };
       recognition.onerror = event => {
         setIsListening(false);
         setStatus(event.error === 'language-not-supported'
           ? 'بسته‌ی تشخیص گفتار فارسی روی دستگاه پشتیبانی نمی‌شود.'
-          : 'دریافت صدا ناموفق بود؛ مجوز میکروفون و تنظیمات دستگاه را بررسی کن.');
+          : event.error === 'not-allowed'
+            ? 'اجازه میکروفون رد شد. در تنظیمات مرورگر دسترسی را فعال کن.'
+            : 'دریافت صدا ناموفق بود؛ مجوز میکروفون و تنظیمات دستگاه را بررسی کن.');
       };
       recognition.onend = () => setIsListening(false);
       recognition.onresult = event => {
@@ -253,6 +270,7 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
     try {
       if (pendingAction.kind === 'add-model') {
         const savedModel = await addWarehouseModel(pendingAction.model);
+        setCommand('');
         onModelAdded(savedModel.name);
         setAnswer(`مدل «${savedModel.name}» به کاتالوگ اضافه شد.`);
       } else if (pendingAction.kind === 'initial-stock-batch') {
@@ -268,6 +286,7 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
           };
         }));
         await saveWarehouseInitialStocks(stocks);
+        setCommand('');
         await onInventoryChanged(stocks.map(stock => stock.product_key));
         setInitialStockDraft([]);
         setAnswer(`موجودی پایه‌ی ${stocks.length.toLocaleString('fa-IR')} محصول ذخیره شد.`);
@@ -281,6 +300,7 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
           quantity: existing?.quantity ?? 0,
           reorder_point: pendingAction.quantity
         }]);
+        setCommand('');
         setAnswer(`نقطه سفارش ${describeProduct(pendingAction.product)} روی ${pendingAction.quantity.toLocaleString('fa-IR')} تنظیم شد.`);
       } else {
         const date = toMiladi(pendingAction.date || getCurrentJalaliDate());
@@ -297,6 +317,7 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
           reference_number: pendingAction.referenceNumber,
           notes: pendingAction.notes
         });
+        setCommand('');
         const stock = await getWarehouseCurrentStock(pendingAction.product.key);
         setAnswer(`${pendingAction.movementType === 'in' ? 'ورود' : 'خروج'} ثبت شد: ${describeProduct(pendingAction.product)}\nموجودی جدید: ${(stock?.quantity ?? 0).toLocaleString('fa-IR')}`);
       }
@@ -313,7 +334,7 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
   };
 
   const pendingDescription = pendingAction?.kind === 'add-model'
-    ? `افزودن مدل جدید: ${pendingAction.model}`
+    ? `افزودن مدل/محصول جدید: ${pendingAction.model}`
     : pendingAction?.kind === 'initial-stock-batch'
       ? `ثبت موجودی پایه‌ی ${pendingAction.items.length.toLocaleString('fa-IR')} محصول؛ فقط محصولات فهرست‌شده تغییر می‌کنند.`
       : pendingAction?.kind === 'reorder-point'
@@ -327,14 +348,14 @@ export default function WarehouseVoiceAssistant({ customModels, onModelAdded, on
       <div className="mx-auto grid max-w-6xl gap-3 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <h2 id="warehouse-voice-title" className="text-base font-bold text-slate-900">دستیار صوتی انبار</h2>
-          <p className="mt-1 text-sm text-slate-600">بررسی موجودی، ورود و خروج، موجودی پایه و افزودن مدل</p>
+          <p className="mt-1 text-sm text-slate-600">بررسی موجودی، ورود و خروج، ورودی کلی، موجودی پایه و افزودن مدل/کالا</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void handleStartListening()} disabled={busy || isListening} className="min-h-11 rounded bg-emerald-800 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
             {isListening ? 'در حال شنیدن...' : busy ? 'لطفاً صبر کن...' : '🎙 شروع گفتار آفلاین'}
           </button>
           <form onSubmit={event => { event.preventDefault(); void processCommand(command); }} className="flex min-w-0 flex-1 gap-2 md:flex-none">
-            <input aria-label="فرمان انبار" value={command} onChange={event => setCommand(event.target.value)} className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm md:w-80" placeholder="فرمان را بگو یا وارد کن" />
+            <input aria-label="فرمان انبار" value={command} onChange={event => setCommand(event.target.value)} disabled={busy} className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100 md:w-80" placeholder="فرمان را بگو یا وارد کن" />
             <button type="submit" disabled={busy || !command.trim()} className="min-h-11 rounded border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-900 disabled:opacity-50">اجرا</button>
           </form>
         </div>

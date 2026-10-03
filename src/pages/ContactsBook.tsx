@@ -5,6 +5,7 @@ import {
   findContactByVoiceQuery,
   formatContactAnswerFull,
   getSpeechRecognitionCtor,
+  getSpeechRecognitionSupportMessage,
 } from '../utils/contactVoice';
 
 const ContactsBook: React.FC = () => {
@@ -100,9 +101,15 @@ const ContactsBook: React.FC = () => {
   };
 
   const handleStartVoice = () => {
+    const supportMessage = getSpeechRecognitionSupportMessage();
+    if (supportMessage) {
+      alert(supportMessage);
+      return;
+    }
+
     const SpeechRecognition = getSpeechRecognitionCtor();
     if (!SpeechRecognition) {
-      alert('مرورگر از تشخیص گفتار پشتیبانی نمی‌کند. از Chrome استفاده کنید.');
+      alert('مرورگر از تشخیص گفتار پشتیبانی نمی‌کند. روی موبایل از Google Chrome یا Samsung Internet استفاده کنید.');
       return;
     }
 
@@ -110,6 +117,7 @@ const ContactsBook: React.FC = () => {
     recognition.lang = 'fa-IR';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    recognition.continuous = false;
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -117,9 +125,14 @@ const ContactsBook: React.FC = () => {
       setVoiceStatus('🔊 بگویید: «آدرس و شماره تلفن مش حسین بده»');
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: { error?: string }) => {
       setIsListening(false);
-      setVoiceStatus('❌ صدا شنیده نشد یا خطا رخ داد.');
+      const error = event?.error;
+      if (error === 'not-allowed') {
+        setVoiceStatus('❌ اجازه میکروفون رد شد. مجوز دسترسی را در تنظیمات مرورگر فعال کن.');
+        return;
+      }
+      setVoiceStatus('❌ صدا شنیده نشد یا خطا رخ داد. دوباره امتحان کن.');
     };
 
     recognition.onend = () => setIsListening(false);

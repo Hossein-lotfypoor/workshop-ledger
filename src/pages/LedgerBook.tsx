@@ -31,7 +31,12 @@ const LedgerBook: React.FC = () => {
   const handleStartVoice = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("مرورگر شما از سیستم صوتی پشتیبانی نمی‌کند. لطفاً از گوگل کروم جدید استفاده کنید.");
+      alert('در این مرورگر سیستم صوتی پشتیبانی نمی‌شود. روی موبایل از Google Chrome یا Samsung Internet استفاده کنید.');
+      return;
+    }
+
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      alert('برای استفاده از سیستم صوتی در موبایل، باید روی HTTPS یا localhost باشید و اجازه میکروفون را بدهید.');
       return;
     }
 
@@ -39,15 +44,20 @@ const LedgerBook: React.FC = () => {
     recognition.lang = 'fa-IR';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    recognition.continuous = false;
 
     recognition.onstart = () => {
       setIsListening(true);
       setVoiceStatus('🔊 در حال شنیدن... مثال: «۲۰ عدد واشر از کارگاه ۳۰ — فاکتور ۴۰۰۳ — تحویل انبار گردید»');
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: { error?: string }) => {
       setIsListening(false);
-      setVoiceStatus('❌ خطایی رخ داد یا صدایی شنیده نشد.');
+      if (event?.error === 'not-allowed') {
+        setVoiceStatus('❌ اجازه میکروفون رد شد. در تنظیمات مرورگر، دسترسی میکروفون را فعال کن.');
+        return;
+      }
+      setVoiceStatus('❌ خطایی رخ داد یا صدایی شنیده نشد. دوباره امتحان کن.');
     };
 
     recognition.onend = () => {
