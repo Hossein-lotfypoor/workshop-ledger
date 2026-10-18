@@ -35,6 +35,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="container mx-auto p-4" dir="rtl">
       <h1 className="text-2xl font-bold mb-6">داشبورد مدیریت کارگاه</h1>
+      <h1  >testman </h1>
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-3">📌 در حال پیگیری (تسویه نشده)</h2>

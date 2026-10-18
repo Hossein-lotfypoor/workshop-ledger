@@ -1,13 +1,13 @@
 export const warehouseColors = ['کروم', 'طلایی', 'سفید کروم', 'سفید طلا', 'مشکی طلا', 'کروم مات', 'طلا مات'];
 export const warehouseProductTypes = ['دوش', 'آفتابه', 'روشویی', 'سینک', 'روشویی پایه بلند'];
 export const showerSinkTypes = ['مانلی', 'آیسان', 'رما', 'جینا'];
-export const multiUseSinkTypes = ['دایانا تک منظوره', 'دایانا دومنظوره', 'کیان دوین'];
+export const multiUseSinkTypes = ['دایانا تک منظوره', 'دایانا دومنظوره', 'کیان', 'دوین'];
 export const showerSinkModel = 'سینک شاوری';
-export const multiUseSinkModel = 'سینک تک و دومنظوره';
+export const multiUseSinkModel = 'سینک های تک و دومنظوره';
 export const wallSinkModel = 'سینک دیواری';
 export const warehouseModelNames = [
   'آرنیا', 'آندیا', 'رهام', 'سورنا', 'فلت', 'راشین', 'هامین', 'دایانا', 'نویان', 'آترابان',
-  'کارولین', 'دنیز', 'ارمیس', 'مانیسا', 'آرشام', 'آبتین', 'تیدا', 'بامبو', 'اکونومی',
+  'کارولین', 'دنیز', 'ارمیس', 'مانیسا', 'آرشام', 'آبتین', 'تیدا', 'بامبو', 'اکونومی','اکونومی شایلین',
   'اکونومی تمام برنج', 'بامبو شایلین'
 ];
 const specialModelOptions = [

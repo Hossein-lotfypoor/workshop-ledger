@@ -38,7 +38,9 @@ function App() {
 
   return (
     <HashRouter>
+  
       <div className="app-shell" dir="rtl">
+           
         <header className="app-header">
           <div className="app-header-inner">
             <NavLink to="/" className="app-brand" aria-label="دفتر کارگاه، صفحه خانه">
