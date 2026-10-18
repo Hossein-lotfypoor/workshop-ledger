@@ -13,6 +13,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "@types/react-router-dom": "^5.3.3",
     "cors": "^2.8.6",
     "dexie": "^4.0.1",

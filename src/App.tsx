@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useState } from 'react';
-import { HashRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { HashRouter, Routes, Route, NavLink, Outlet } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import InvoiceDetails from './pages/InvoiceDetails';
 import WorkshopsManager from './pages/WorkshopsManager';
@@ -14,6 +14,8 @@ import WarehouseMovementPage from './pages/WarehouseMovementPage';
 import WarehouseMatrix from './pages/WarehouseMatrix';
 import WarehouseProduct from './pages/WarehouseProduct';
 import WarehouseInitialStock from './pages/WarehouseInitialStock';
+import WarehouseAuthGate from './components/WarehouseAuthGate';
+import { RequireWarehouseWriteAccess } from './components/WarehouseAccessContext';
 
 function App() {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -62,11 +64,15 @@ function App() {
             <Route path="/ledger" element={<LedgerBook />} />
             <Route path="/ledger-reports" element={<LedgerReports />} />
             <Route path="/contacts" element={<ContactsBook />} />
-            <Route path="/warehouse" element={<WarehouseMatrix />} />
-            <Route path="/warehouse/bulk-entry" element={<WarehouseInitialStock />} />
-            <Route path="/warehouse/intake" element={<WarehouseMovementPage type="in" />} />
-            <Route path="/warehouse/dispatch" element={<WarehouseMovementPage type="out" />} />
-            <Route path="/warehouse/product/:model/:color/:item" element={<WarehouseProduct />} />
+            <Route element={<WarehouseAuthGate><Outlet /></WarehouseAuthGate>}>
+              <Route path="/warehouse" element={<WarehouseMatrix />} />
+              <Route element={<RequireWarehouseWriteAccess />}>
+                <Route path="/warehouse/bulk-entry" element={<WarehouseInitialStock />} />
+                <Route path="/warehouse/intake" element={<WarehouseMovementPage type="in" />} />
+                <Route path="/warehouse/dispatch" element={<WarehouseMovementPage type="out" />} />
+              </Route>
+              <Route path="/warehouse/product/:model/:color/:item" element={<WarehouseProduct />} />
+            </Route>
           </Routes>
         </main>
         <nav className="app-mobile-nav" aria-label="ناوبری موبایل">

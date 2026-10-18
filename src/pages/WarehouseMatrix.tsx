@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { addWarehouseModel, getWarehouseCurrentStock, getWarehouseCurrentStocks, getWarehouseModels, type WarehouseStock } from '../db/database';
 import WarehouseVoiceAssistant from '../components/WarehouseVoiceAssistant';
+import { useWarehouseRole } from '../components/WarehouseAccessContext';
 import {
   getWarehouseProductKey,
   multiUseSinkTypes,
@@ -12,6 +13,8 @@ import {
 } from '../utils/warehouseProducts';
 
 const WarehouseMatrix: React.FC = () => {
+  const role = useWarehouseRole();
+  const readOnly = role === 'viewer';
   const [customModels, setCustomModels] = useState<string[]>([]);
   const [stocks, setStocks] = useState<Record<string, WarehouseStock>>({});
   const [modelModalOpen, setModelModalOpen] = useState(false);
@@ -74,15 +77,15 @@ const WarehouseMatrix: React.FC = () => {
           <p className="text-xs font-semibold text-emerald-700">مدیریت موجودی <span className="px-1 text-slate-400">/</span> {models.length} مدل، ۷ رنگ و ۵ گروه کالا</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">ماتریس محصولات انبار</h1>
         </div>
-        <div className="flex gap-2">
+        {readOnly ? <p className="text-sm font-semibold text-slate-600">دسترسی فقط مشاهده</p> : <div className="flex flex-wrap gap-2">
           <Link to="/warehouse/bulk-entry" className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800">ورودی کلی</Link>
           <Link to="/warehouse/intake" className="rounded border border-emerald-700 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50">ثبت ورود کالا</Link>
           <Link to="/warehouse/dispatch" className="rounded border border-orange-700 bg-white px-4 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-50">ثبت خروج کالا</Link>
           <button type="button" onClick={() => { setModelError(''); setModelModalOpen(true); }} className="rounded bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800">＋ افزودن مدل جدید</button>
-        </div>
+        </div>}
       </header>
 
-      <WarehouseVoiceAssistant customModels={customModels} onModelAdded={handleVoiceModelAdded} onInventoryChanged={refreshStocks} />
+      {!readOnly && <WarehouseVoiceAssistant customModels={customModels} onModelAdded={handleVoiceModelAdded} onInventoryChanged={refreshStocks} />}
 
       <div className="warehouse-matrix-shell overflow-hidden rounded-lg bg-white shadow-sm">
         <table className="warehouse-matrix w-full table-fixed border-separate border-spacing-0 text-center">
@@ -161,7 +164,7 @@ const WarehouseMatrix: React.FC = () => {
           </tbody>
         </table>
       </div>
-      {modelModalOpen && (
+      {!readOnly && modelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setModelModalOpen(false); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="add-model-title" className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">

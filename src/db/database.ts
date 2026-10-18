@@ -1,4 +1,5 @@
 import Dexie, { Table } from 'dexie';
+import { supabase } from '../lib/supabase';
 
 export interface Workshop {
   id?: number;
@@ -260,6 +261,15 @@ class WorkshopDB extends Dexie {
 
 export const db = new WorkshopDB();
 
+async function getWarehouseIdentity() {
+  const client = supabase;
+  if (!client) throw new Error('اتصال Supabase تنظیم نشده است. فایل .env.local را بررسی کن.');
+  const { data, error } = await client.auth.getUser();
+  if (error) throw error;
+  if (!data.user) throw new Error('برای استفاده از انبار ابتدا وارد حساب شو.');
+  return { client, userId: data.user.id };
+}
+
 export async function addWarehouseEntry(entry: Omit<WarehouseEntry, 'id'>) {
   if (!entry.product_name.trim()) throw new Error('نام کالا الزامی است');
   if (!Number.isFinite(entry.quantity) || entry.quantity <= 0) throw new Error('مقدار باید بیشتر از صفر باشد');
@@ -267,19 +277,34 @@ export async function addWarehouseEntry(entry: Omit<WarehouseEntry, 'id'>) {
   if (entry.raw_body_reorder_point !== undefined && (!Number.isFinite(entry.raw_body_reorder_point) || entry.raw_body_reorder_point < 0)) throw new Error('نقطه سفارش تنه خام باید صفر یا بیشتر باشد');
   if (!entry.unit.trim()) throw new Error('واحد کالا الزامی است');
   if (!entry.date) throw new Error('تاریخ ورود الزامی است');
-  return await db.warehouse_entries.add(entry);
+  const { client, userId } = await getWarehouseIdentity();
+  const { data, error } = await client.from('workshop_warehouse_entries')
+    .insert({ ...entry, user_id: userId }).select('*').single();
+  if (error) throw error;
+  return data as WarehouseEntry;
 }
 
 export async function getWarehouseEntries(): Promise<WarehouseEntry[]> {
-  return await db.warehouse_entries.orderBy('date').reverse().toArray();
+  const { client } = await getWarehouseIdentity();
+  const { data, error } = await client.from('workshop_warehouse_entries')
+    .select('*').order('date', { ascending: false }).order('id', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as WarehouseEntry[];
 }
 
 export async function getWarehouseStocks(): Promise<WarehouseStock[]> {
-  return await db.warehouse_stock.toArray();
+  const { client } = await getWarehouseIdentity();
+  const { data, error } = await client.from('workshop_warehouse_stock').select('*');
+  if (error) throw error;
+  return (data ?? []) as WarehouseStock[];
 }
 
 export async function getWarehouseStock(productKey: string): Promise<WarehouseStock | undefined> {
-  return await db.warehouse_stock.get(productKey);
+  const { client } = await getWarehouseIdentity();
+  const { data, error } = await client.from('workshop_warehouse_stock')
+    .select('*').eq('product_key', productKey).maybeSingle();
+  if (error) throw error;
+  return data as WarehouseStock | undefined;
 }
 
 export async function saveWarehouseInitialStocks(stocks: WarehouseStock[]): Promise<void> {
@@ -290,35 +315,52 @@ export async function saveWarehouseInitialStocks(stocks: WarehouseStock[]): Prom
     }
   }
   if (stocks.length === 0) return;
-  await db.transaction('rw', db.warehouse_stock, () => db.warehouse_stock.bulkPut(stocks));
+  const { client, userId } = await getWarehouseIdentity();
+  const rows = stocks.map(stock => ({
+    ...stock,
+    reorder_point: stock.reorder_point ?? null,
+    user_id: userId
+  }));
+  const { error } = await client.from('workshop_warehouse_stock')
+    .upsert(rows, { onConflict: 'user_id,product_key' });
+  if (error) throw error;
 }
 
 export async function getWarehouseModels(): Promise<WarehouseModel[]> {
-  return db.warehouse_models.orderBy('name').toArray();
+  const { client } = await getWarehouseIdentity();
+  const { data, error } = await client.from('workshop_warehouse_models').select('name').order('name');
+  if (error) throw error;
+  return (data ?? []) as WarehouseModel[];
 }
 
 export async function addWarehouseModel(name: string): Promise<WarehouseModel> {
   const normalizedName = name.trim();
   if (!normalizedName) throw new Error('نام مدل را وارد کنید.');
-  const models = await db.warehouse_models.toArray();
+  const { client, userId } = await getWarehouseIdentity();
+  const { data: models, error: listError } = await client.from('workshop_warehouse_models').select('name');
+  if (listError) throw listError;
   if (models.some(model => model.name.toLocaleLowerCase('fa') === normalizedName.toLocaleLowerCase('fa'))) {
     throw new Error('این مدل قبلاً اضافه شده است.');
   }
-  await db.warehouse_models.add({ name: normalizedName });
-  return { name: normalizedName };
+  const { data, error } = await client.from('workshop_warehouse_models')
+    .insert({ name: normalizedName, user_id: userId }).select('name').single();
+  if (error) throw error;
+  return data as WarehouseModel;
 }
 
 export async function getWarehouseMovements(productKey?: string): Promise<WarehouseMovement[]> {
-  const movements = productKey
-    ? await db.warehouse_movements.where('product_key').equals(productKey).toArray()
-    : await db.warehouse_movements.toArray();
-  return movements.sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0));
+  const { client } = await getWarehouseIdentity();
+  let query = client.from('workshop_warehouse_movements').select('*');
+  if (productKey) query = query.eq('product_key', productKey);
+  const { data, error } = await query.order('date', { ascending: false }).order('id', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as WarehouseMovement[];
 }
 
 export async function getWarehouseCurrentStocks(): Promise<WarehouseStock[]> {
   const [initialStocks, movements] = await Promise.all([
-    db.warehouse_stock.toArray(),
-    db.warehouse_movements.toArray()
+    getWarehouseStocks(),
+    getWarehouseMovements()
   ]);
   const stocks = new Map(initialStocks.map(stock => [stock.product_key, { ...stock }]));
   for (const movement of movements) {
@@ -337,8 +379,8 @@ export async function getWarehouseCurrentStocks(): Promise<WarehouseStock[]> {
 
 export async function getWarehouseCurrentStock(productKey: string): Promise<WarehouseStock | undefined> {
   const [initialStock, movements] = await Promise.all([
-    db.warehouse_stock.get(productKey),
-    db.warehouse_movements.where('product_key').equals(productKey).toArray()
+    getWarehouseStock(productKey),
+    getWarehouseMovements(productKey)
   ]);
   if (!initialStock && movements.length === 0) return undefined;
   const stock: WarehouseStock = initialStock
@@ -361,18 +403,14 @@ export async function addWarehouseMovement(movement: Omit<WarehouseMovement, 'id
   if (!Number.isFinite(movement.quantity) || movement.quantity <= 0) throw new Error('مقدار باید بیشتر از صفر باشد');
   if (!movement.date) throw new Error('تاریخ گردش الزامی است');
 
-  await db.transaction('rw', db.warehouse_stock, db.warehouse_movements, async () => {
-    if (movement.type === 'out') {
-      const initialStock = await db.warehouse_stock.get(movement.product_key);
-      const previousMovements = await db.warehouse_movements.where('product_key').equals(movement.product_key).toArray();
-      const available = (initialStock?.quantity ?? 0) + previousMovements.reduce(
-        (quantity, item) => quantity + (item.type === 'in' ? item.quantity : -item.quantity),
-        0
-      );
-      if (movement.quantity > available) throw new Error(`موجودی کافی نیست؛ موجودی فعلی ${available} است`);
-    }
-    await db.warehouse_movements.add(movement);
-  });
+  const currentStock = await getWarehouseCurrentStock(movement.product_key);
+  if (movement.type === 'out' && movement.quantity > (currentStock?.quantity ?? 0)) {
+    throw new Error(`موجودی کافی نیست؛ موجودی فعلی ${currentStock?.quantity ?? 0} است`);
+  }
+  const { client, userId } = await getWarehouseIdentity();
+  const { error } = await client.from('workshop_warehouse_movements')
+    .insert({ ...movement, user_id: userId });
+  if (error) throw error;
 }
 
 export async function addWorkshop(workshop: Omit<Workshop, 'id'>) {
